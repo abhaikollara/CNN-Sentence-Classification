@@ -54,7 +54,9 @@ class CNN(object):
         maxC3 = tf.nn.max_pool(C3, [1,C3.get_shape()[1],1,1] , [1,1,1,1], padding='VALID')
         maxC3 = tf.squeeze(maxC3, [1,2])
         z = tf.concat(1, [maxC1, maxC2, maxC3])
+        # Fully connected layer
         y = tf.add(tf.matmul(z,W), b)
+        
         self.loss = tf.nn.sparse_softmax_cross_entropy_with_logits(y, self.labels)
         
     def train(self, data):
