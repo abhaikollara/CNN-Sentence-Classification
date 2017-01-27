@@ -43,9 +43,9 @@ class CNN(object):
         W = tf.Variable(tf.random_normal([3*self.n_kernels, 2]))
         b = tf.Variable(tf.random_normal([1,2]))
         #Convolutions
-        C1 = tf.nn.conv2d(x_conv, F1, [1,1,1,1], padding='VALID')
-        C2 = tf.nn.conv2d(x_conv, F2, [1,1,1,1], padding='VALID')
-        C3 = tf.nn.conv2d(x_conv, F2, [1,1,1,1], padding='VALID')
+        C1 = tf.nn.relu(tf.nn.conv2d(x_conv, F1, [1,1,1,1], padding='VALID'))
+        C2 = tf.nn.relu(tf.nn.conv2d(x_conv, F2, [1,1,1,1], padding='VALID'))
+        C3 = tf.nn.relu(tf.nn.conv2d(x_conv, F2, [1,1,1,1], padding='VALID'))
         #Max pooling
         maxC1 = tf.nn.max_pool(C1, [1,C1.get_shape()[1],1,1] , [1,1,1,1], padding='VALID')
         maxC1 = tf.squeeze(maxC1, [1,2])
@@ -54,10 +54,11 @@ class CNN(object):
         maxC3 = tf.nn.max_pool(C3, [1,C3.get_shape()[1],1,1] , [1,1,1,1], padding='VALID')
         maxC3 = tf.squeeze(maxC3, [1,2])
         z = tf.concat(1, [maxC1, maxC2, maxC3])
+        zd = tf.dropout(z, self.dropout_rate)
         # Fully connected layer
         y = tf.add(tf.matmul(z,W), b)
         
-        self.loss = tf.nn.sparse_softmax_cross_entropy_with_logits(y, self.labels)
-        
+        losses = tf.nn.sparse_softmax_cross_entropy_with_logits(y, self.labels)
+        self.loss = tf.reduce_mean(losses)
     def train(self, data):
     	pass
