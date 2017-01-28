@@ -60,8 +60,8 @@ def get_data(paths):
     t_pos = tokenizer(pos_texts, 54, word2idx)
     t_neg = tokenizer(neg_texts, 54, word2idx)
 
-    pos_labels = np.ones([t_pos.shape[0],])
-    neg_labels = np.zeros([t_neg.shape[0], ])
+    pos_labels = np.ones([t_pos.shape[0],], dtype='int32')
+    neg_labels = np.zeros([t_neg.shape[0], ], dtype='int32')
     data = np.concatenate((t_pos, t_neg))
     labels = np.concatenate((pos_labels, neg_labels))
     return data, labels, word2idx
