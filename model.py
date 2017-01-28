@@ -11,7 +11,7 @@ class CNN(object):
     def __init__(self, config, sess):
         self.n_epochs = config['n_epochs']
         self.kernel_sizes = config['kernel_sizes']
-        self.n_kernels = config['n_kernels']
+        self.n_filters = config['n_filters']
         self.dropout_rate = config['dropout_rate']
         self.val_split = config['val_split']
         self.edim = config['edim']
@@ -30,11 +30,11 @@ class CNN(object):
         x = tf.nn.embedding_lookup(word_embedding, self.inp)
         x_conv = tf.expand_dims(x, -1)
         #Filters
-        F1 = tf.Variable(tf.random_normal([self.kernel_sizes[0], self.edim ,1, self.n_kernels] ,stddev=self.std_dev),dtype='float32')
-        F2 = tf.Variable(tf.random_normal([self.kernel_sizes[1], self.edim, 1, self.n_kernels] ,stddev=self.std_dev),dtype='float32')
-        F3 = tf.Variable(tf.random_normal([self.kernel_sizes[2], self.edim, 1, self.n_kernels] ,stddev=self.std_dev),dtype='float32')
+        F1 = tf.Variable(tf.random_normal([self.kernel_sizes[0], self.edim ,1, self.n_filters] ,stddev=self.std_dev),dtype='float32')
+        F2 = tf.Variable(tf.random_normal([self.kernel_sizes[1], self.edim, 1, self.n_filters] ,stddev=self.std_dev),dtype='float32')
+        F3 = tf.Variable(tf.random_normal([self.kernel_sizes[2], self.edim, 1, self.n_filters] ,stddev=self.std_dev),dtype='float32')
         #Weight for final layer
-        W = tf.Variable(tf.random_normal([3*self.n_kernels, 2], stddev=self.std_dev),dtype='float32')
+        W = tf.Variable(tf.random_normal([3*self.n_filters, 2], stddev=self.std_dev),dtype='float32')
         b = tf.Variable(tf.random_normal([1,2] ,stddev=self.std_dev),dtype='float32')
         #Convolutions
         C1 = tf.nn.relu(tf.nn.conv2d(x_conv, F1, [1,1,1,1], padding='VALID'))
@@ -49,25 +49,22 @@ class CNN(object):
         maxC3 = tf.squeeze(maxC3, [1,2])
         z = tf.concat(1, [maxC1, maxC2, maxC3])
         zd = tf.nn.dropout(z, self.dropout_rate)
-        print zd.get_shape()
         # Fully connected layer
-        y = tf.add(tf.matmul(zd,W), b)
-        print y.get_shape()
-        print self.labels.get_shape()
-        losses = tf.nn.sparse_softmax_cross_entropy_with_logits(y, self.labels)
+        self.y = tf.add(tf.matmul(zd,W), b)
+        losses = tf.nn.sparse_softmax_cross_entropy_with_logits(self.y, self.labels)
         self.loss = tf.reduce_mean(losses)
-        self.optim = tf.train.AdamOptimizer()
+        self.optim = tf.train.AdamOptimizer(learning_rate=0.001)
         self.train_op = self.optim.minimize(self.loss)
 
     def train(self, data, labels):
         self.build_model()
         n_batches = int(ceil(data.shape[0]/self.batch_size))
     	tf.initialize_all_variables().run()
+        t_data, t_labels, v_data, v_labels = data_utils.generate_split(data, labels, self.val_split)
         for epoch in range(1,self.n_epochs+1):
-            t_data, t_labels, v_data, v_labels = data_utils.generate_split(data, labels, self.val_split)
             train_cost = 0
             for batch in range(1,n_batches+1):
-                X, y = data_utils.generate_batch(data, labels, self.batch_size)
+                X, y = data_utils.generate_batch(t_data, t_labels, self.batch_size)
                 f_dict = {
                     self.inp : X,
                     self.labels : y,
@@ -75,11 +72,9 @@ class CNN(object):
 
                 _, cost = self.session.run([self.train_op, self.loss], feed_dict=f_dict)
                 train_cost += cost
-                sys.stdout.write('Cost  :   %f - Batch %d of %d     \r' %(cost ,batch ,n_batches))
+                sys.stdout.write('Epoch %d Cost  :   %f - Batch %d of %d     \r' %(epoch, cost ,batch ,n_batches))
                 sys.stdout.flush()
 
-            print
-            print "Epoch train cost", train_cost/n_batches
             print
 
             self.test(v_data, v_labels)
@@ -87,16 +82,21 @@ class CNN(object):
     def test(self,data,labels):
         n_batches = int(ceil(data.shape[0]/self.batch_size))
         test_cost = 0
+        preds = []
+        ys = []
         for batch in range(1,n_batches+1):
-            X, y = data_utils.generate_batch(data, labels, self.batch_size)
+            X, Y = data_utils.generate_batch(data, labels, self.batch_size)
             f_dict = {
                 self.inp : X,
-                self.labels : y,
+                self.labels : Y,
             }    
-            cost = self.session.run([self.loss], feed_dict=f_dict)
-            test_cost += cost[0]
-            sys.stdout.write('Cost  :   %f - Batch %d of %d     \r' %(cost[0] ,batch ,n_batches))
+            cost, y = self.session.run([self.loss,self.y], feed_dict=f_dict)
+            test_cost += cost
+            sys.stdout.write('Cost  :   %f - Batch %d of %d     \r' %(cost ,batch ,n_batches))
             sys.stdout.flush()
+
+            preds.extend(np.argmax(y,1))
+            ys.extend(Y)
+
         print
-        print "Test cost", test_cost/n_batches
-        print
+        print "Accuracy", np.mean(np.asarray(np.equal(ys, preds), dtype='float32'))*100
