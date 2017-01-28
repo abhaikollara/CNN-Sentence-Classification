@@ -47,8 +47,9 @@ def tokenizer(string_list, padding, word2idx):
     return np.asarray(tokenized)
 
 
-def get_data(PATH_POS, PATH_NEG):
-
+def get_data(paths):
+    PATH_POS = paths[0]
+    PATH_NEG = paths[1]
     with open(PATH_NEG) as f:
         neg_texts = f.read().splitlines()
     with open(PATH_POS) as f:
@@ -59,4 +60,8 @@ def get_data(PATH_POS, PATH_NEG):
     t_pos = tokenizer(pos_texts, 54, word2idx)
     t_neg = tokenizer(neg_texts, 54, word2idx)
 
-    return t_pos, t_neg, word2idx
+    pos_labels = np.ones([t_pos.shape[0],])
+    neg_labels = np.zeros([t_neg.shape[0], ])
+    data = np.concatenate((t_pos, t_neg))
+    labels = np.concatenate((pos_labels, neg_labels))
+    return data, labels, word2idx
