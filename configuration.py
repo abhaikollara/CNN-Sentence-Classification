@@ -10,5 +10,5 @@ config = {
     'n_filters'  : 100,
     'batch_size' : 50,
     'paths' : ['data/rt-polarity.pos', 'data/rt-polarity.neg'],
-    'l2_lambda' : 3,
+
 }

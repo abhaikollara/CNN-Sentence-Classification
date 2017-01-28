@@ -19,7 +19,6 @@ class CNN(object):
         self.std_dev = config['std_dev']
         self.input_len = config['sentence_len']
         self.batch_size = config['batch_size']
-        self.l2_lambda = config['l2_lambda']
         self.inp = tf.placeholder(shape=[None, self.input_len], dtype='int32')
         self.labels = tf.placeholder(shape=[None,], dtype='int32')
         self.loss = None
@@ -41,8 +40,6 @@ class CNN(object):
         #Weight for final layer
         W = tf.Variable(tf.random_normal([3*self.n_filters, 2], stddev=self.std_dev),dtype='float32')
         b = tf.Variable(tf.constant(0.1, shape=[1,2]),dtype='float32')
-        l2_loss = tf.Variable(tf.constant(0.0), trainable=False)
-        l2_lambda = tf.constant(self.l2_lambda, dtype='float32')
         #Convolutions
         C1 = tf.add(tf.nn.conv2d(x_conv, F1, [1,1,1,1], padding='VALID'), FB1)
         C2 = tf.add(tf.nn.conv2d(x_conv, F2, [1,1,1,1], padding='VALID'), FB2)
@@ -65,10 +62,8 @@ class CNN(object):
         # Fully connected layer
         self.y = tf.add(tf.matmul(zd,W), b)
         losses = tf.nn.sparse_softmax_cross_entropy_with_logits(self.y, self.labels)
-        #L2 Regularisation
-        l2_loss += tf.nn.l2_loss(W)
-        l2_loss += tf.nn.l2_loss(b)
-        self.loss = tf.add(tf.reduce_mean(losses), tf.mul(l2_loss,l2_lambda))
+
+        self.loss = tf.reduce_mean(losses)
         self.optim = tf.train.AdamOptimizer(learning_rate=0.001)
         self.train_op = self.optim.minimize(self.loss)
 
