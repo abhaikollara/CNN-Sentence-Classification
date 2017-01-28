@@ -67,7 +67,7 @@ def get_data(paths):
     return data, labels, word2idx
 
 def generate_split(data, labels, val_split):
-    j = np.concatenate((dat, labels.reshape([-1, 1])), 1)
+    j = np.concatenate((data, labels.reshape([-1, 1])), 1)
     np.random.shuffle(j)
     split_point = int(ceil(dat.shape[0]*(1-val_split)))
     train_data = j[:split_point,:-1]
@@ -75,3 +75,9 @@ def generate_split(data, labels, val_split):
     train_labels = j[:split_point,-1]
     val_labels = j[split_point:, -1]
     return train_data, train_labels, val_data, val_labels
+
+def generate_batch(data, labels, batch_size):
+    j = np.concatenate((data, labels.reshape([-1, 1])), 1)
+    mark = np.random.randint(batch_size, j.shape[0])
+    batch_data = j[mark-batch_size : mark]
+    return batch_data[:,:-1], batch_data[:,-1]
