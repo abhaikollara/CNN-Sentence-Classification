@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import re
-
+from math import ceil
 
 def clean_string(string_list):
     ret_list = []
@@ -69,7 +69,7 @@ def get_data(paths):
 def generate_split(data, labels, val_split):
     j = np.concatenate((data, labels.reshape([-1, 1])), 1)
     np.random.shuffle(j)
-    split_point = int(ceil(dat.shape[0]*(1-val_split)))
+    split_point = int(ceil(data.shape[0]*(1-val_split)))
     train_data = j[:split_point,:-1]
     val_data = j[split_point:,:-1]
     train_labels = j[:split_point,-1]
