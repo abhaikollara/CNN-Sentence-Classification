@@ -24,11 +24,13 @@ class CNN(object):
         self.labels = tf.placeholder(shape=[None,], dtype='int32')
         self.loss = None
         self.session = sess
-        
+        self.cur_drop_rate = tf.placeholder(dtype='float32')
+
     def build_model(self):
         word_embedding = tf.Variable(tf.random_normal([self.n_words, self.edim], stddev=self.std_dev))
         x = tf.nn.embedding_lookup(word_embedding, self.inp)
         x_conv = tf.expand_dims(x, -1)
+        
         #Filters
         F1 = tf.Variable(tf.random_normal([self.kernel_sizes[0], self.edim ,1, self.n_filters] ,stddev=self.std_dev),dtype='float32')
         F2 = tf.Variable(tf.random_normal([self.kernel_sizes[1], self.edim, 1, self.n_filters] ,stddev=self.std_dev),dtype='float32')
@@ -59,7 +61,7 @@ class CNN(object):
         maxC3 = tf.squeeze(maxC3, [1,2])
         #Concatenating pooled features
         z = tf.concat(1, [maxC1, maxC2, maxC3])
-        zd = tf.nn.dropout(z, self.dropout_rate)
+        zd = tf.nn.dropout(z, self.cur_drop_rate)
         # Fully connected layer
         self.y = tf.add(tf.matmul(zd,W), b)
         losses = tf.nn.sparse_softmax_cross_entropy_with_logits(self.y, self.labels)
@@ -82,6 +84,7 @@ class CNN(object):
                 f_dict = {
                     self.inp : X,
                     self.labels : y,
+                    self.cur_drop_rate : self.dropout_rate
                 }    
 
                 _, cost = self.session.run([self.train_op, self.loss], feed_dict=f_dict)
@@ -103,6 +106,7 @@ class CNN(object):
             f_dict = {
                 self.inp : X,
                 self.labels : Y,
+                self.cur_drop_rate : 1.0
             }    
             cost, y = self.session.run([self.loss,self.y], feed_dict=f_dict)
             test_cost += cost
