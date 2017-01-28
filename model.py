@@ -33,13 +33,21 @@ class CNN(object):
         F1 = tf.Variable(tf.random_normal([self.kernel_sizes[0], self.edim ,1, self.n_filters] ,stddev=self.std_dev),dtype='float32')
         F2 = tf.Variable(tf.random_normal([self.kernel_sizes[1], self.edim, 1, self.n_filters] ,stddev=self.std_dev),dtype='float32')
         F3 = tf.Variable(tf.random_normal([self.kernel_sizes[2], self.edim, 1, self.n_filters] ,stddev=self.std_dev),dtype='float32')
+        FB1 = tf.Variable(tf.constant(0.1, shape=[self.n_filters]))
+        FB2 = tf.Variable(tf.constant(0.1, shape=[self.n_filters]))
+        FB3 = tf.Variable(tf.constant(0.1, shape=[self.n_filters]))
         #Weight for final layer
         W = tf.Variable(tf.random_normal([3*self.n_filters, 2], stddev=self.std_dev),dtype='float32')
         b = tf.Variable(tf.random_normal([1,2] ,stddev=self.std_dev),dtype='float32')
         #Convolutions
-        C1 = tf.nn.relu(tf.nn.conv2d(x_conv, F1, [1,1,1,1], padding='VALID'))
-        C2 = tf.nn.relu(tf.nn.conv2d(x_conv, F2, [1,1,1,1], padding='VALID'))
-        C3 = tf.nn.relu(tf.nn.conv2d(x_conv, F2, [1,1,1,1], padding='VALID'))
+        C1 = tf.add(tf.nn.conv2d(x_conv, F1, [1,1,1,1], padding='VALID'), FB1)
+        C2 = tf.add(tf.nn.conv2d(x_conv, F2, [1,1,1,1], padding='VALID'), FB2)
+        C3 = tf.add(tf.nn.conv2d(x_conv, F3, [1,1,1,1], padding='VALID'), FB3)
+
+        C1 = tf.nn.relu(C1)
+        C2 = tf.nn.relu(C2)
+        C3 = tf.nn.relu(C3)
+
         #Max pooling
         maxC1 = tf.nn.max_pool(C1, [1,C1.get_shape()[1],1,1] , [1,1,1,1], padding='VALID')
         maxC1 = tf.squeeze(maxC1, [1,2])
