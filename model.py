@@ -1,22 +1,14 @@
 import tensorflow as tf
 import numpy as np
+from math import ceil
+import data_utils
+import sys
 
-config = {
-    'n_epochs' : 5,
-    'kernel_sizes' : [3, 4, 5],
-    'dropout_rate' : 0.5,
-    'val_split' : 0.1,
-    'edim' : 300,
-    'n_words' : 18763,
-    'std_dev' : 0.05,
-    'sentence_len' : 54,
-    'n_kernels'  : 100,
-}
 
 class CNN(object):
     
     
-    def __init__(self, config):
+    def __init__(self, config, sess):
         self.n_epochs = config['n_epochs']
         self.kernel_sizes = config['kernel_sizes']
         self.n_kernels = config['n_kernels']
@@ -26,22 +18,24 @@ class CNN(object):
         self.n_words = config['n_words']
         self.std_dev = config['std_dev']
         self.input_len = config['sentence_len']
+        self.batch_size = config['batch_size']
+
         self.inp = tf.placeholder(shape=[None, self.input_len], dtype='int32')
         self.labels = tf.placeholder(shape=[None,], dtype='int32')
         self.loss = None
-#         self.session = sess
+        self.session = sess
         
     def build_model(self):
         word_embedding = tf.Variable(tf.random_normal([self.n_words, self.edim], stddev=self.std_dev))
         x = tf.nn.embedding_lookup(word_embedding, self.inp)
         x_conv = tf.expand_dims(x, -1)
         #Filters
-        F1 = tf.Variable(tf.random_normal([self.kernel_sizes[0], self.edim ,1, self.n_kernels]))
-        F2 = tf.Variable(tf.random_normal([self.kernel_sizes[1], self.edim, 1, self.n_kernels]))
-        F3 = tf.Variable(tf.random_normal([self.kernel_sizes[2], self.edim, 1, self.n_kernels]))
+        F1 = tf.Variable(tf.random_normal([self.kernel_sizes[0], self.edim ,1, self.n_kernels] ,stddev=self.std_dev),dtype='float32')
+        F2 = tf.Variable(tf.random_normal([self.kernel_sizes[1], self.edim, 1, self.n_kernels] ,stddev=self.std_dev),dtype='float32')
+        F3 = tf.Variable(tf.random_normal([self.kernel_sizes[2], self.edim, 1, self.n_kernels] ,stddev=self.std_dev),dtype='float32')
         #Weight for final layer
-        W = tf.Variable(tf.random_normal([3*self.n_kernels, 2]))
-        b = tf.Variable(tf.random_normal([1,2]))
+        W = tf.Variable(tf.random_normal([3*self.n_kernels, 2], stddev=self.std_dev),dtype='float32')
+        b = tf.Variable(tf.random_normal([1,2] ,stddev=self.std_dev),dtype='float32')
         #Convolutions
         C1 = tf.nn.relu(tf.nn.conv2d(x_conv, F1, [1,1,1,1], padding='VALID'))
         C2 = tf.nn.relu(tf.nn.conv2d(x_conv, F2, [1,1,1,1], padding='VALID'))
@@ -54,11 +48,55 @@ class CNN(object):
         maxC3 = tf.nn.max_pool(C3, [1,C3.get_shape()[1],1,1] , [1,1,1,1], padding='VALID')
         maxC3 = tf.squeeze(maxC3, [1,2])
         z = tf.concat(1, [maxC1, maxC2, maxC3])
-        zd = tf.dropout(z, self.dropout_rate)
+        zd = tf.nn.dropout(z, self.dropout_rate)
+        print zd.get_shape()
         # Fully connected layer
-        y = tf.add(tf.matmul(z,W), b)
-        
+        y = tf.add(tf.matmul(zd,W), b)
+        print y.get_shape()
+        print self.labels.get_shape()
         losses = tf.nn.sparse_softmax_cross_entropy_with_logits(y, self.labels)
         self.loss = tf.reduce_mean(losses)
-    def train(self, data):
-    	pass
+        self.optim = tf.train.AdamOptimizer()
+        self.train_op = self.optim.minimize(self.loss)
+
+    def train(self, data, labels):
+        self.build_model()
+        n_batches = int(ceil(data.shape[0]/self.batch_size))
+    	tf.initialize_all_variables().run()
+        for epoch in range(1,self.n_epochs+1):
+            t_data, t_labels, v_data, v_labels = data_utils.generate_split(data, labels, self.val_split)
+            train_cost = 0
+            for batch in range(1,n_batches+1):
+                X, y = data_utils.generate_batch(data, labels, self.batch_size)
+                f_dict = {
+                    self.inp : X,
+                    self.labels : y,
+                }    
+
+                _, cost = self.session.run([self.train_op, self.loss], feed_dict=f_dict)
+                train_cost += cost
+                sys.stdout.write('Cost  :   %f - Batch %d of %d     \r' %(cost ,batch ,n_batches))
+                sys.stdout.flush()
+
+            print
+            print "Epoch train cost", train_cost/n_batches
+            print
+
+            self.test(v_data, v_labels)
+    
+    def test(self,data,labels):
+        n_batches = int(ceil(data.shape[0]/self.batch_size))
+        test_cost = 0
+        for batch in range(1,n_batches+1):
+            X, y = data_utils.generate_batch(data, labels, self.batch_size)
+            f_dict = {
+                self.inp : X,
+                self.labels : y,
+            }    
+            cost = self.session.run([self.loss], feed_dict=f_dict)
+            test_cost += cost[0]
+            sys.stdout.write('Cost  :   %f - Batch %d of %d     \r' %(cost[0] ,batch ,n_batches))
+            sys.stdout.flush()
+        print
+        print "Test cost", test_cost/n_batches
+        print
