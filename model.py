@@ -57,11 +57,11 @@ class CNN(object):
         maxC3 = tf.nn.max_pool(C3, [1,C3.get_shape()[1],1,1] , [1,1,1,1], padding='VALID')
         maxC3 = tf.squeeze(maxC3, [1,2])
         #Concatenating pooled features
-        z = tf.concat(1, [maxC1, maxC2, maxC3])
+        z = tf.concat(axis=1, values=[maxC1, maxC2, maxC3])
         zd = tf.nn.dropout(z, self.cur_drop_rate)
         # Fully connected layer
         self.y = tf.add(tf.matmul(zd,W), b)
-        losses = tf.nn.sparse_softmax_cross_entropy_with_logits(self.y, self.labels)
+        losses = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.y, labels=self.labels)
 
         self.loss = tf.reduce_mean(losses)
         self.optim = tf.train.AdamOptimizer(learning_rate=0.001)
@@ -70,7 +70,7 @@ class CNN(object):
     def train(self, data, labels):
         self.build_model()
         n_batches = int(ceil(data.shape[0]/self.batch_size))
-    	tf.initialize_all_variables().run()
+    	tf.global_variables_initializer().run()
         t_data, t_labels, v_data, v_labels = data_utils.generate_split(data, labels, self.val_split)
         for epoch in range(1,self.n_epochs+1):
             train_cost = 0

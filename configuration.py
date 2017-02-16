@@ -1,5 +1,5 @@
 config = {
-    'n_epochs' : 20,
+    'n_epochs' : 5,
     'kernel_sizes' : [3, 4, 5],
     'dropout_rate' : 0.5,
     'val_split' : 0.4,
