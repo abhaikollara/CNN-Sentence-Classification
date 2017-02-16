@@ -7,3 +7,6 @@ The implementation differs from the original paper in the following ways :
 - L2 norm constraints are not enforced
 
 Edit the config file to change the configuration of the model
+
+## Results
+The model produces a test accuracy of 75.33 % within 2 epochs. The results produced in the paper for the given architecture is 76.1 %
